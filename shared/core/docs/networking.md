@@ -1,65 +1,81 @@
 # 🌐 Networking Documentation
 
-This package handles all communication between the app and the internet using **Ktor**. It is designed to be safe, reliable, and easy to use.
+This package handles all communication between the app and the internet using **Ktor**. It is designed to be safe, reliable, highly configurable, and easy to use.
 
 ---
 
 ## 💡 Why we use this?
-Network calls are risky. The internet can be slow or disconnected. Our networking tools provide a "Safety Net" to ensure that an error doesn't crash the entire app.
+Network calls are risky. The internet can be slow or disconnected. Our networking tools provide a "Safety Net" to ensure that an error doesn't crash the entire app, automatically handles authentication refresh, and optionally encrypts payloads in transit.
 
 ---
 
-## 🛠 Classes & Methods
+## 🛠 Key Classes & Interfaces
 
-### `ApiResult<T>` (Sealed Class)
-Instead of returning raw data, our APIs return an `ApiResult`. This forced you to think about what happens when things fail.
+### `KmpNetworkConfig`
+The configuration model for initializing the multiplatform HTTP client:
+```kotlin
+data class KmpNetworkConfig(
+    val baseUrl: String,
+    val isDebugMode: Boolean = false,
+    val payloadEncryptionEnabled: Boolean = false,
+    val connectTimeoutMs: Long = 30_000,
+    val requestTimeoutMs: Long = 30_000,
+    val socketTimeoutMs: Long = 30_000,
+)
+```
 
-*   **`Success(data)`**: The "Happy Path." Contains the model returned by the server.
-*   **`Error(error)`**: The "Failure Path." Contains:
-    *   `statusCode`: The HTTP code (e.g., 401 for unauthorized).
-    *   `message`: The reason for failure.
-    *   `cause`: The original exception (for debugging).
+### `createHttpClient(...)`
+The primary factory function for building the app's single shared `HttpClient`. It configures essential Ktor plugins:
+1. **Timeouts**: Connect, Request, and Socket timeouts.
+2. **Logging**: Pretty-printed JSON request/response logs in debug mode.
+3. **Payload Encryption**: Automatically decrypts AES-256 encrypted server responses (when enabled).
+4. **Auth**: Handles Bearer token injection and automatic 401 token refreshing via `installAuth`.
+5. **Content Negotiation**: Uses Kotlinx Serialization for JSON parsing.
+
+Example setup:
+```kotlin
+val networkConfig = KmpNetworkConfig(
+    baseUrl = "https://api.example.com",
+    isDebugMode = true,
+    payloadEncryptionEnabled = true
+)
+
+val httpClient = createHttpClient(
+    tokenProvider = tokenProvider,
+    refreshTokens = { refreshToken -> authRepository.refreshTokens(refreshToken) },
+    networkConfig = networkConfig,
+    payloadCipherKeyProvider = { getAesKeyBytes() },
+    onAuthFailed = { logout() }
+)
+```
+
+### `ApiResult<T>` (Sealed Interface)
+Instead of returning raw data or throwing unhandled exceptions, repository calls return an `ApiResult`:
+* **`Success(data)`**: Contains the model returned by the server.
+* **`Error(error)`**: Contains:
+    * `statusCode`: The HTTP status code (e.g., 401 Unauthorized, 404 Not Found, 500 Server Error).
+    * `message`: Human-readable error description.
+    * `cause`: The original underlying exception.
 
 ### `safeApiCall { ... }`
-This is a **higher-order function** (a function that takes another function). It wraps your code in a `try-catch` block automatically.
-*   It catches **Timeouts**, **Server Errors**, and even **JSON Parsing** errors.
+A higher-order function that executes a Ktor request safely inside a `try-catch` block, transforming network exceptions, timeouts, and HTTP errors into an `ApiResult.Error`.
 
 ### `NetworkRefreshHandler`
-This interface is the bridge for **Automatic Token Refreshing**. 
-*   If a request fails with a `401 Unauthorized`, the networking layer automatically uses the `refresh()` method to get a new token and retries the request without the user even noticing!
+Bridge interface for automatic token refreshing. If a request returns `401 Unauthorized`, the client uses `refresh()` to obtain new tokens and retries the request seamlessly.
 
 ### `ConnectivityMonitor`
-A "Stream" of truth about the device's internet status.
-*   **`isConnected`**: A StateFlow you can observe to show an "Offline" banner.
-
----
-
-## 🛠 Advanced Components
-
-### `ApiResponse<T>`
-Every successful response from our backend is wrapped in this standard "Envelope":
-*   `status`: The internal status code.
-*   `data`: The actual JSON payload you requested.
-*   `message`: An optional status message from the server.
-
-### `NetworkConfig`
-The central hub for all networking constants. 
-*   **`baseUrl`**: Changes automatically based on your environment (Local/Staging/Prod).
-*   **`certificatePins`**: List of allowed SSL certificates for high-security pinning.
-*   **`payloadEncryptionEnabled`**: Toggle for the AES-256 layer.
+Monitors internet reachability across Android (`ConnectivityManager`) and iOS (`NWPathMonitor`):
+* `isConnected`: A `StateFlow<Boolean>` you can observe in the UI to display offline state banners.
 
 ---
 
 ## 🚀 Real-World Examples
 
-### 1. The Repository Layer (The Data Provider)
-Your Repository should always return an `ApiResult`. Use `safeApiCall` to protect the app.
-
+### 1. Repository Layer Usage
 ```kotlin
 class ProductRepository(private val client: HttpClient) {
 
     suspend fun getProducts(): ApiResult<List<Product>> {
-        // Use safeApiCall to prevent crashes!
         return safeApiCall {
             client.get("products").body<List<Product>>()
         }
@@ -67,9 +83,7 @@ class ProductRepository(private val client: HttpClient) {
 }
 ```
 
-### 2. The ViewModel Layer (The Decision Maker)
-The ViewModel handles the result and updates the UI state. Use the `.onSuccess` and `.onError` helpers to keep your code clean.
-
+### 2. ViewModel Layer Usage
 ```kotlin
 fun loadProfile() {
     viewModelScope.launch {
@@ -77,12 +91,10 @@ fun loadProfile() {
 
         repository.getUserProfile()
             .onSuccess { profile ->
-                // Everything went well!
                 updateState { copy(data = profile, isLoading = false) }
             }
             .onError { error ->
-                // Handle common status codes specifically
-                if (error.isUnauthorized) {
+                if (error.statusCode == 401) {
                     emitEffect(Effect.NavigateToLogin)
                 } else {
                     updateState { copy(errorMessage = error.message, isLoading = false) }
@@ -92,31 +104,16 @@ fun loadProfile() {
 }
 ```
 
-### 3. Monitoring Internet Status
-Use the `ConnectivityMonitor` to show a "No Connection" bar at the top of your screen.
-
+### 3. Monitoring Internet Connectivity
 ```kotlin
 @Composable
-fun MyScreen(connectivity: ConnectivityMonitor) {
+fun MainScreen(connectivity: ConnectivityMonitor) {
     val isOnline by connectivity.isConnected.collectAsState()
 
     if (!isOnline) {
-        Box(Modifier.background(Color.Red)) {
-            Text("You are currently offline")
+        Box(Modifier.background(Color.Red).fillMaxWidth().padding(8.dp)) {
+            Text("You are currently offline", color = Color.White)
         }
     }
 }
 ```
-
----
-
-## 🏗 Ktor Plugins (Built-in Magic)
-Our `HttpClientFactory` automatically installs:
-1.  **Logging**: Prints every request and response to your console in a pretty format.
-2.  **ContentNegotiation**: Converts JSON strings into Kotlin classes automatically.
-3.  **Auth**: Injects your Bearer token into the headers of every request.
-4.  **Timeouts**: Stops a request if the server takes more than 30 seconds to answer.
-
----
-> [!IMPORTANT]
-> **Rule:** Never use `try-catch` inside a Repository if you are using `safeApiCall`. It's redundant!
