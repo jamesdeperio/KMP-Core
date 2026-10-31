@@ -1,7 +1,7 @@
 package shared.core.platform
 
 /**
- * Enum defining the supported mobile platforms in the project.
+ * Enum defining the supported mobile platforms in the Trivana project.
  */
 enum class PlatformType {
     ANDROID,

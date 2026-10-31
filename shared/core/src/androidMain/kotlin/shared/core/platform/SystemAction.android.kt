@@ -12,15 +12,17 @@ actual object SystemAction {
         val uri = link.toUri()
         val intent =
             when {
-                link.contains("instagram.com/reel") ->
+                link.contains("instagram.com/reel", ignoreCase = true) ->
                     Intent(Intent.ACTION_VIEW, uri).apply {
                         `package` = "com.instagram.android"
                     }
-                link.contains("tiktok.com") ->
+                link.contains("tiktok.com", ignoreCase = true) ->
                     Intent(Intent.ACTION_VIEW, uri).apply {
                         `package` = "com.zhiliaoapp.musically"
                     }
-                link.contains("youtube.com/shorts") || link.contains("youtu.be") ->
+                link.contains("youtube.com/shorts", ignoreCase = true) || 
+                link.contains("youtu.be", ignoreCase = true) ||
+                link.contains("youtube.com/watch", ignoreCase = true) ->
                     Intent(Intent.ACTION_VIEW, uri).apply {
                         `package` = "com.google.android.youtube"
                     }

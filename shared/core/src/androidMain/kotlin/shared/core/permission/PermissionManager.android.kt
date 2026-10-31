@@ -14,7 +14,7 @@ class AndroidPermissionManager : PermissionManager {
     private fun Permission.toAndroidPermission(): String = when (this) {
         Permission.CAMERA -> Manifest.permission.CAMERA
         Permission.GALLERY -> if (android.os.Build.VERSION.SDK_INT >= 33) {
-            Manifest.permission.READ_MEDIA_IMAGES
+            "" // On Android 13+, use Photo Picker (no permission needed)
         } else {
             Manifest.permission.READ_EXTERNAL_STORAGE
         }
@@ -32,10 +32,19 @@ class AndroidPermissionManager : PermissionManager {
         val androidPermission = permission.toAndroidPermission()
         if (androidPermission.isEmpty()) return PermissionState.GRANTED
 
-        return when (ContextCompat.checkSelfPermission(appContext, androidPermission)) {
-            PackageManager.PERMISSION_GRANTED -> PermissionState.GRANTED
-            else -> PermissionState.DENIED
+        if (ContextCompat.checkSelfPermission(appContext, androidPermission) == PackageManager.PERMISSION_GRANTED) {
+            return PermissionState.GRANTED
         }
+
+        // Check for Partial Access (Android 14+)
+        if (permission == Permission.GALLERY && android.os.Build.VERSION.SDK_INT >= 34) {
+            val partialPermission = "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
+            if (ContextCompat.checkSelfPermission(appContext, partialPermission) == PackageManager.PERMISSION_GRANTED) {
+                return PermissionState.PARTIAL
+            }
+        }
+
+        return PermissionState.DENIED
     }
 
     override suspend fun requestPermission(permission: Permission): PermissionState {

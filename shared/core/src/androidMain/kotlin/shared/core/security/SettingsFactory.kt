@@ -38,3 +38,14 @@ fun createSecureStorage(
 
     return SecureStorage(settings, cipher)
 }
+
+/**
+ * Creates a PayloadCipher backed by a hardware key that does NOT require biometrics.
+ * Useful for securing local data (like Room/Drafts) at rest.
+ */
+fun createAtRestCipher(context: Context): PayloadCipher {
+    val keyManager = AndroidSecureKeyManager(context)
+    return PayloadCipher { 
+        keyManager.getOrCreateAtRestKey()
+    }
+}

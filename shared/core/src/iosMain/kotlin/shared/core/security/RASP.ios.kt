@@ -189,8 +189,7 @@ actual suspend fun checkDeveloperOptionsEnabled(): Boolean = false
 @OptIn(ExperimentalForeignApi::class)
 actual suspend fun checkProxyOrVpn(): Boolean {
     val proxySettings = CFNetworkCopySystemProxySettings() ?: return false
-    // In KMP, CFDictionary can often be cast to NSDictionary via bridge
-    val dict = proxySettings as? NSDictionary ?: return false
+    val dict = platform.Foundation.CFBridgingRelease(proxySettings) as? NSDictionary ?: return false
     
     val keys = dict.allKeys
     return keys.any { 

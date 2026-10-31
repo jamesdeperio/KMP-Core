@@ -7,6 +7,8 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidMultiplatformLibrary)
+    alias(libs.plugins.composeMultiplatform)
+    alias(libs.plugins.composeCompiler)
     alias(libs.plugins.androidLint)
     alias(libs.plugins.kotlinxSerialization)
     alias(libs.plugins.buildkonfig)
@@ -72,6 +74,7 @@ buildkonfig {
 }
 
 kotlin {
+    applyDefaultHierarchyTemplate()
 
     android {
         namespace = "shared.core"
@@ -89,13 +92,16 @@ kotlin {
     }
 
     val xcfName = "shared:coreKit"
+    val isIosEnabled = project.findProperty("isIosEnabled")?.toString()?.toBoolean() ?: true
 
-    iosArm64 {
-        binaries.framework { baseName = xcfName }
-    }
+    if (isIosEnabled) {
+        iosArm64 {
+            binaries.framework { baseName = xcfName }
+        }
 
-    iosSimulatorArm64 {
-        binaries.framework { baseName = xcfName }
+        iosSimulatorArm64 {
+            binaries.framework { baseName = xcfName }
+        }
     }
 
     sourceSets {
@@ -133,23 +139,33 @@ kotlin {
 
                 // Koin DI
                 implementation(libs.koinCore)
+
+                // Okio for file system access
+                implementation(libs.okio)
+
+                // Compose Runtime for platform bridges
+                implementation(libs.composeRuntime)
             }
         }
 
         androidMain {
             dependencies {
+                implementation(libs.exifinterface)
                 implementation(libs.ktorClientOkhttp)
                 implementation(libs.okhttp)
                 implementation(libs.koinAndroid)
                 implementation(libs.androidxBiometric)
                 implementation(libs.androidxAppcompat) // For FragmentActivity
                 implementation(libs.androidxLifecycleProcess)
+                implementation(libs.androidxActivityCompose)
             }
         }
 
-        iosMain {
-            dependencies {
-                implementation(libs.ktorClientDarwin)
+        if (isIosEnabled) {
+            val iosMain by getting {
+                dependencies {
+                    implementation(libs.ktorClientDarwin)
+                }
             }
         }
 

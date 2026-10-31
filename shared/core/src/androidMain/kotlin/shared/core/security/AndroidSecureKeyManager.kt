@@ -15,6 +15,7 @@ class AndroidSecureKeyManager(
 
     companion object {
         private const val KEY_ENCRYPTED_SEED = "encrypted_seed"
+        private const val KEY_AT_REST_SEED = "at_rest_seed"
     }
 
     fun getOrCreatePayloadKey(): ByteArray {
@@ -25,6 +26,18 @@ class AndroidSecureKeyManager(
             val newKey = ByteArray(32).apply { SecureRandom().nextBytes(this) }
             val newEncrypted = AndroidKeyStoreCipher.encrypt(newKey)
             prefs.edit { putString(KEY_ENCRYPTED_SEED, newEncrypted) }
+            newKey
+        }
+    }
+
+    fun getOrCreateAtRestKey(): ByteArray {
+        val encryptedSeed = prefs.getString(KEY_AT_REST_SEED, null)
+        return if (encryptedSeed != null) {
+            AndroidKeyStoreCipher.decrypt(encryptedSeed, alias = Config.AT_REST_KEY_ALIAS, requireAuth = false)
+        } else {
+            val newKey = ByteArray(32).apply { SecureRandom().nextBytes(this) }
+            val newEncrypted = AndroidKeyStoreCipher.encrypt(newKey, alias = Config.AT_REST_KEY_ALIAS, requireAuth = false)
+            prefs.edit { putString(KEY_AT_REST_SEED, newEncrypted) }
             newKey
         }
     }

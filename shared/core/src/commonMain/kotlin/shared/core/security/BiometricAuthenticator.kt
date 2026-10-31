@@ -4,7 +4,13 @@ package shared.core.security
  * Platform-independent helper for biometric authentication (Fingerprint, FaceID, etc.).
  * Implementation is provided in platform-specific source sets (androidMain, iosMain).
  */
-expect class BiometricAuthenticator() {
+expect open class BiometricAuthenticator() {
+    /**
+     * Checks if biometric authentication is available on the device.
+     * @return A [BiometricResult] indicating availability or reasons for failure.
+     */
+    open suspend fun canAuthenticate(): BiometricResult
+
     /**
      * Attempts to authenticate the user using the device's biometric sensors.
      *
@@ -14,7 +20,7 @@ expect class BiometricAuthenticator() {
      * @param negativeButtonText The text for the cancellation button (Android only).
      * @return A [BiometricResult] indicating success, failure, or unavailability.
      */
-    suspend fun authenticate(
+    open suspend fun authenticate(
         title: String,
         subtitle: String? = null,
         description: String? = null,

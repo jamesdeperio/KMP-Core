@@ -6,9 +6,16 @@ import platform.LocalAuthentication.LAContext
 import platform.LocalAuthentication.LAPolicyDeviceOwnerAuthenticationWithBiometrics
 import kotlin.coroutines.resume
 
-actual class BiometricAuthenticator actual constructor() {
+actual open class BiometricAuthenticator actual constructor() {
     @OptIn(ExperimentalForeignApi::class)
-    actual suspend fun authenticate(
+    actual open suspend fun canAuthenticate(): BiometricResult {
+        val context = LAContext()
+        val canEvaluate = context.canEvaluatePolicy(LAPolicyDeviceOwnerAuthenticationWithBiometrics, null)
+        return if (canEvaluate) BiometricResult.Success else BiometricResult.HardwareNotAvailable
+    }
+
+    @OptIn(ExperimentalForeignApi::class)
+    actual open suspend fun authenticate(
         title: String,
         subtitle: String?,
         description: String?,

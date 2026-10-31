@@ -12,7 +12,7 @@ class PayloadCipherTest {
         val key = PayloadCipher.generateKey()
         val cipher = PayloadCipher { key }
         
-        val originalText = "Hello World! This is a secret message."
+        val originalText = "Hello Trivana! This is a secret message."
         val encrypted = cipher.encryptText(originalText)
         
         assertNotEquals(originalText, encrypted)

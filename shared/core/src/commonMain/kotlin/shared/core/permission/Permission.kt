@@ -11,6 +11,7 @@ enum class Permission {
 
 enum class PermissionState {
     GRANTED,
+    PARTIAL,
     DENIED,
     NOT_DETERMINED,
     PERMANENTLY_DENIED

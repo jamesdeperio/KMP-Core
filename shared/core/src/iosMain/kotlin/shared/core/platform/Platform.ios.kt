@@ -4,7 +4,15 @@ package shared.core.platform
 import platform.Foundation.NSBundle
 import platform.Foundation.NSProcessInfo
 import platform.UIKit.UIDevice
+import platform.UIKit.UIViewController
+import platform.UIKit.UIApplication
 import kotlin.experimental.ExperimentalNativeApi
+
+lateinit var appActivity: UIViewController
+
+fun initKmpAppActivity(viewController: UIViewController) {
+    appActivity = viewController
+}
 
 class IOSPlatform : Platform {
     override val name: PlatformType = PlatformType.IOS

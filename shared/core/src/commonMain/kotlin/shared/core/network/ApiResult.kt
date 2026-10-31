@@ -52,6 +52,7 @@ inline fun <T> ApiResult<T>.onError(action: (ApiError) -> Unit): ApiResult<T> {
 data class ApiError(
     val statusCode: Int?,
     val message: String,
+    val data: Any? = null,
     val cause: Throwable? = null,
 ) {
     /** Returns true if the server returned a 401 Unauthorized status. */
@@ -87,15 +88,32 @@ suspend inline fun <reified T> safeApiCall(crossinline block: suspend () -> T): 
     } catch (e: ResponseException) {
         ApiResult.Error(toApiError(e))
     } catch (e: Exception) {
-        ApiResult.Error(ApiError(statusCode = null, message = e.message ?: "Network error", cause = e))
+        ApiResult.Error(ApiError(statusCode = 500, message = "Something went wrong", cause = e))
     }
 
 suspend fun toApiError(e: ResponseException): ApiError {
     val response: HttpResponse = e.response
-    val body = runCatching { response.body<String>() }.getOrNull()
-    return ApiError(
-        statusCode = response.status.value,
-        message = body ?: e.message ?: "Request failed",
-        cause = e,
-    )
+    val errorBody = try {
+        response.body<ApiErrorResponse<BaseErrorData>>().error
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        null
+    }
+
+    return if (errorBody != null) {
+        ApiError(
+            statusCode = errorBody.code ?: response.status.value,
+            message = errorBody.message ?: "Something went wrong",
+            data = errorBody,
+            cause = e,
+        )
+    } else {
+        ApiError(
+            statusCode = 500,
+            message = "Something went wrong",
+            data = null,
+            cause = e,
+        )
+    }
 }

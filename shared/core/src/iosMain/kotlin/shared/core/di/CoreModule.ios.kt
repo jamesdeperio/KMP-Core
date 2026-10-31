@@ -1,9 +1,11 @@
 package shared.core.di
 
 import org.koin.core.module.Module
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 import shared.core.Config
 import shared.core.security.TokenProvider
+import shared.core.security.createAtRestCipher
 import shared.core.security.createSecureStorage
 import shared.core.security.createSecureTokenProvider
 
@@ -17,5 +19,9 @@ actual val platformModule: Module =
         // 2. Register a general SecureStorage instance
         single {
             createSecureStorage(Config.SECURE_STORAGE_NAME)
+        }
+
+        single(named("atRestCipher")) {
+            createAtRestCipher()
         }
     }

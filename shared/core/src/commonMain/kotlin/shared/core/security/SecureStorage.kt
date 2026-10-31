@@ -9,7 +9,7 @@ import com.russhwolf.settings.set
  * On Android, this uses AES-256-GCM encryption with keys stored in the Keystore.
  * On iOS, this uses the Keychain which is hardware-encrypted by default.
  */
-class SecureStorage(
+open class SecureStorage(
     private val settings: Settings,
     private val cipher: PayloadCipher? = null,
 ) {

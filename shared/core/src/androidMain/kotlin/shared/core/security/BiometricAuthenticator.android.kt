@@ -7,8 +7,21 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import shared.core.platform.appActivity
 import kotlin.coroutines.resume
 
-actual class BiometricAuthenticator actual constructor() {
-    actual suspend fun authenticate(
+actual open class BiometricAuthenticator actual constructor() {
+    actual open suspend fun canAuthenticate(): BiometricResult {
+        val biometricManager = BiometricManager.from(appActivity)
+        val canAuthenticate = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+
+        return when (canAuthenticate) {
+            BiometricManager.BIOMETRIC_SUCCESS -> BiometricResult.Success
+            BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> BiometricResult.HardwareNotAvailable
+            BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> BiometricResult.HardwareDisabled
+            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> BiometricResult.HardwareDisabled
+            else -> BiometricResult.Failure("Unknown error: $canAuthenticate")
+        }
+    }
+
+    actual open suspend fun authenticate(
         title: String,
         subtitle: String?,
         description: String?,

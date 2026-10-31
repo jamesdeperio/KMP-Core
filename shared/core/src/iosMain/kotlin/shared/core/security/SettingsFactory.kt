@@ -23,3 +23,12 @@ fun createSecureStorage(serviceName: String): SecureStorage {
     val settings = KeychainSettings(service = serviceName)
     return SecureStorage(settings)
 }
+
+/**
+ * On iOS, the Keychain is already secure at rest and doesn't require
+ * additional manual encryption unless cross-app sharing is needed.
+ * Returning null means the storage will use plain text before passing to Keychain.
+ */
+fun createAtRestCipher(): PayloadCipher? {
+    return null
+}

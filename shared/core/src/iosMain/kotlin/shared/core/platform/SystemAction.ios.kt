@@ -20,21 +20,25 @@ actual object SystemAction {
         // Determine app scheme if needed
         val appUrl =
             when {
-                link.contains("instagram.com/reel") -> {
-                    val reelId = url.lastPathComponent
-                    NSURL.URLWithString("instagram://reel/$reelId")
+                link.contains("instagram.com/reel", ignoreCase = true) || link.contains("instagram.com/reels", ignoreCase = true) -> {
+                    val reelId = url.path?.substringAfter("/reels/")?.substringAfter("/reel/")?.substringBefore("/")
+                    if (reelId != null) NSURL.URLWithString("instagram://reels/$reelId/") else null
                 }
-                link.contains("tiktok.com") -> {
-                    val videoId = url.lastPathComponent
-                    NSURL.URLWithString("snssdk1128://aweme/detail/$videoId")
+                link.contains("tiktok.com", ignoreCase = true) -> {
+                    val videoId = url.path?.substringAfter("/video/")?.substringBefore("/")
+                    if (videoId != null) NSURL.URLWithString("snssdk1128://aweme/detail/$videoId") else null
                 }
-                link.contains("youtube.com/shorts") -> {
-                    val shortId = url.lastPathComponent
-                    NSURL.URLWithString("youtube://shorts/$shortId")
+                link.contains("youtube.com/shorts", ignoreCase = true) -> {
+                    val shortId = url.path?.substringAfter("/shorts/")?.substringBefore("/")
+                    if (shortId != null) NSURL.URLWithString("youtube://shorts/$shortId") else null
                 }
-                link.contains("youtu.be") -> {
-                    val videoId = url.lastPathComponent
-                    NSURL.URLWithString("youtube://watch?v=$videoId")
+                link.contains("youtu.be", ignoreCase = true) || link.contains("youtube.com/watch", ignoreCase = true) -> {
+                    val videoId = if (link.contains("youtu.be")) {
+                        url.path?.removePrefix("/")
+                    } else {
+                        url.query?.substringAfter("v=")?.substringBefore("&")
+                    }
+                    if (videoId != null) NSURL.URLWithString("youtube://watch?v=$videoId") else null
                 }
                 else -> null
             }
