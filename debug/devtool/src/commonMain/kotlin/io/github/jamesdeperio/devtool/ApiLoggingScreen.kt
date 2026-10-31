@@ -21,7 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +44,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.jamesdeperio.devtool.icon.BackIcon
 import io.github.jamesdeperio.devtool.icon.CloseIcon
 
@@ -98,18 +98,19 @@ fun LogDetailItem(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DebugScreen(onClose: () -> Unit) {
     var selectedLog by remember { mutableStateOf<ApiLogData?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     val clipboardManager: ClipboardManager = LocalClipboardManager.current
 
+    val logsList by NetworkDebug.logs.collectAsStateWithLifecycle()
+
     val filteredLogs =
-        NetworkDebug.logs.filter {
+        logsList.filter {
             it.path.contains(searchQuery, ignoreCase = true) ||
                 it.statusCode.toString().contains(searchQuery)
-        }
+        }.asReversed()
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         if (selectedLog == null) {
@@ -153,8 +154,11 @@ fun DebugScreen(onClose: () -> Unit) {
                             .fillMaxSize()
                             .padding(horizontal = 12.dp),
                 ) {
-                    items(filteredLogs) { log ->
-                        val isError = log.statusCode != 200
+                    items(
+                        items = filteredLogs,
+                        key = { log -> "${log.method}_${log.path}_${log.timestamp}" }
+                    ) { log ->
+                        val isError = log.statusCode !in 200..299
                         Card(
                             modifier =
                                 Modifier
@@ -261,8 +265,7 @@ fun DebugScreen(onClose: () -> Unit) {
                             .verticalScroll(rememberScrollState())
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                 ) {
-                    val log = selectedLog!!
-                    val isError = log.statusCode != 200
+                    val log = selectedLog ?: return@Column
 
                     LogDetailItem("Path", log.path, clipboardManager)
                     Spacer(modifier = Modifier.height(12.dp))

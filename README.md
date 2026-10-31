@@ -1,31 +1,75 @@
 # 🛠 KMP Core & Debug Tools
 
-This repository contains the foundational shared infrastructure and debugging tools for the Kotlin Multiplatform ecosystem. 
+[![Kotlin Multiplatform](https://img.shields.io/badge/Kotlin-Multiplatform-blue.svg?style=flat&logo=kotlin)](https://kotlinlang.org/docs/multiplatform.html)
+[![KMP Core CI](https://github.com/jamesdeperio/KMP-Core/actions/workflows/ci.yml/badge.svg)](https://github.com/jamesdeperio/KMP-Core/actions/workflows/ci.yml)
+[![JitPack](https://jitpack.io/v/jamesdeperio/KMP-Core.svg)](https://jitpack.io/#jamesdeperio/KMP-Core)
+
+Foundational shared infrastructure, networking, security, permissions, and debugging tools for the **Kotlin Multiplatform (KMP)** ecosystem (Android & iOS).
+
+---
 
 ## 📦 Modules
 
-- **`:shared:core`**: Core utilities, networking (Ktor), security (Encryption, Biometrics), and lifecycle management.
-- **`:debug:devtool`**: On-device API monitor and shake-to-debug features.
-- **`:debug:devtool-noop`**: Production "no-op" version of the devtools.
+- **`:shared:core`**: Core networking (`HttpClientFactory`, `KmpNetworkConfig`, `ApiResult`, `AuthPlugin`), security (`RASP`, `BiometricAuthenticator`, `SecureStorage`, `PayloadCipher`), permissions (`PermissionManager`), and utilities.
+- **`:debug:devtool`**: On-device API monitor, request/response inspector, and shake-to-debug features.
+- **`:debug:devtool-noop`**: Production "no-op" zero-overhead release version of devtools.
+
+---
+
+## ✨ Features at a Glance
+
+- 🌐 **Ktor Networking**: Generic `KmpNetworkConfig` setup, `ApiResult<T>` wrapper, automatic 401 token refresh (`AuthPlugin`), and payload decryption (`PayloadEncryptionPlugin`).
+- 🔐 **Security & RASP**: Root/jailbreak detection, debugger check, emulator check, Android KeyStore / iOS Keychain `SecureStorage`, and biometrics (`LAContext` & `BiometricPrompt`).
+- 🛠 **Permissions**: Unified `PermissionManager` for Camera, Location, Storage, and Notifications.
+- 🧰 **Utilities**: `DateTimeUtils`, `ImageProcessor`, `FileStorage`, `JwtUtils`, `DataMasker`, `FlowExtensions`.
 
 ---
 
 ## 🚀 How to Import into your Project
 
-Since this is a library repository, you can integrate it into your existing KMP project using **Git Submodules**.
+### Option A: JitPack (Recommended)
 
-### 1. Add as a Submodule
-In your main project's terminal, run:
-
-```bash
-git submodule add <this-repo-url> libs/kmp-core
-```
-
-### 2. Configure `settings.gradle.kts`
-Include the modules from the submodule directory:
+#### 1. Add Repository
+In your `settings.gradle.kts`:
 
 ```kotlin
-// In your main project's settings.gradle.kts
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
+    }
+}
+```
+
+#### 2. Add Dependencies
+In your module's `build.gradle.kts`:
+
+```kotlin
+sourceSets {
+    commonMain.dependencies {
+        implementation("com.github.jamesdeperio.KMP-Core:shared:core:Tag")
+        
+        // Optional DevTools
+        if (isDebugMode) {
+            implementation("com.github.jamesdeperio.KMP-Core:debug:devtool:Tag")
+        } else {
+            implementation("com.github.jamesdeperio.KMP-Core:debug:devtool-noop:Tag")
+        }
+    }
+}
+```
+
+---
+
+### Option B: Git Submodule
+
+#### 1. Add as a Submodule
+```bash
+git submodule add https://github.com/jamesdeperio/KMP-Core.git libs/kmp-core
+```
+
+#### 2. Configure `settings.gradle.kts`
+```kotlin
 include(":shared-core")
 project(":shared-core").projectDir = file("libs/kmp-core/shared/core")
 
@@ -36,20 +80,11 @@ include(":debug-devtool-noop")
 project(":debug-devtool-noop").projectDir = file("libs/kmp-core/debug/devtool-noop")
 ```
 
-### 3. Add Dependencies
-In your app or feature modules' `build.gradle.kts`:
-
+#### 3. Add Dependencies
 ```kotlin
 sourceSets {
     commonMain.dependencies {
         implementation(project(":shared-core"))
-        
-        // Conditional devtool integration
-        if (isDebug) { // Your debug flag
-            implementation(project(":debug-devtool"))
-        } else {
-            implementation(project(":debug-devtool-noop"))
-        }
     }
 }
 ```
@@ -57,8 +92,11 @@ sourceSets {
 ---
 
 ## 📚 Documentation
-For more details on how to use the core features and debugging tools, see:
+
+For detailed item documentation and code examples:
 - [**Core Module Guide**](./docs/README-core.md)
+- [**Networking Guide**](./shared/core/docs/networking.md)
+- [**Security & RASP Guide**](./shared/core/docs/security.md)
+- [**Permissions Guide**](./shared/core/docs/permissions.md)
 - [**Debug Module Guide**](./docs/README-debug.md)
 - [**Environment Setup**](./docs/ENV_SETUP.md)
-- [**Gradle Guide**](./docs/GRADLE_GUIDE.md)
